@@ -1,10 +1,32 @@
-# hex_python_template
+# hex_vehicle
 
-**hex_python_template** is a ROS package template designed to seamlessly integrate ROS 1 and ROS 2 Python code.
+**hex_vehicle** is the minial implementation to use socketcan and ROS to control HEXMOVE chassis. This demo is make as simple as possible, so you can modify to fit your needs, or remove the ROS part to use it as a standalone python script.
 
-## Maintainer
+## Pre requisites
 
-[Dong Zhaorui](mailto:847235539@qq.com)
+- A linux machine supporting socketcan
+- A socketcan interface, for example the can device we provide or physical can device, USB2CAN etc.
+- ROS1 or ROS2 installed. Refer to the [ROS Installation guide](http://wiki.ros.org/ROS/Installation)
+- The pip package `socketcan` [python-can](https://github.com/hardbyte/python-can)
+  > Ubuntu users can easily install by `apt install python3-can`
+
+
+## Supported Platforms and Systems
+
+Currently, only Ubuntu is supported. For architectures, only x64 and ARM are supported. There is no plan to support other architectures at the moment.
+
+For users using other systems, you can choose to run ROS inside a Docker container. However, there will be no technical support for this.
+
+### Verified Platforms
+* [x] **X64**
+* [X] **Jetson Orin Nano**
+* [x] **Jetson Orin NX**
+* [X] **Jetson AGX Orin**
+* [ ] **Horizon RDK X5**
+* [ ] **Rockchip RK3588**
+
+todo fill the info below
+---
 
 ## Public APIs
 
@@ -72,20 +94,7 @@ Follow these steps to set up the project for development and testing on your loc
    source install/setup.bash --extend
    ```
 
-### Verified Platforms
 
-* [ ] **Jetson Orin Nano**
-* [x] **Jetson Orin NX**
-* [ ] **Jetson AGX Orin**
-* [ ] **Horizon RDK X5**
-* [ ] **Rockchip RK3588**
-
-### Prerequisites
-
-Ensure the following software and hardware are installed:
-
-* **ROS**:  
-   Refer to the [ROS Installation guide](http://wiki.ros.org/ROS/Installation)
 
 ### Usage
 
