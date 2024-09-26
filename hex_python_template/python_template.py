@@ -11,13 +11,14 @@ import sys
 import time
 import typing
 
+scrpit_path = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(scrpit_path)
+
 from utility import DataInterface
 from utility.hexcan import HEXCANMessage
 from utility.hexcan import HEXCANIDClass, HEXCANIDStdFunction
 from vehicle_const import HEXCANIDVehicleFunction, VehicleModel, VEHICLE_INFO, VehicleMode
 
-scrpit_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(scrpit_path)
 
 
 class Vehicle:
@@ -34,6 +35,8 @@ class Vehicle:
         self._caculate_odom_from_speed = caculate_odom_from_speed
 
         self._target_speed = [0, 0, 0] # x,y,z. x,y in m/s, z in rad/s
+        self._target_speed_got_time = None
+        self._cmd_vel_timeout = 0.5 # If we don't get target speed in this time, we should stop the vehicle
         self._read_speed = [0, 0, 0] # x,y,z. x,y in m/s, z in rad/s todo what about arkerman steering angle?
         self._odom = [0, 0, 0] # x,y,z. x,y in m, z in rad. 
 
@@ -99,7 +102,6 @@ class Vehicle:
         if not has_error:
             self.err_info = ""
 
-
     def handle_can_msg(self, can_msg: HEXCANMessage):
         # Check if the message is extended
         if not can_msg.extended:
@@ -145,7 +147,6 @@ class Vehicle:
             # You can refer to docs for all functions and implement them yourself. And PR is welcome!
             pass
         pass
-
     
     def generate_can_msg(self) -> list:
         """
@@ -180,11 +181,15 @@ class Vehicle:
             msg.data.append((self._can_id >> 8) & 0xFF)
             msg.data.append(1)
             msg_list.append(msg)
+            self.__data_interface.logi("Trying to enable the chassis")
             return msg_list
         
         
         # SPEED_SET message
         msg = HEXCANMessage(self._can_id | HEXCANIDVehicleFunction.SPEED_SET.value, b'', True, now)
+        # If _target_speed_got_time is None or too old, we should stop the vehicle
+        if self._target_speed_got_time is None or now - self._target_speed_got_time > self._cmd_vel_timeout:
+            self._target_speed = [0, 0, 0]
         msg.data = bytearray()
         """
         Byte 0-1: x speed in mm/s, int16
@@ -208,7 +213,7 @@ class Vehicle:
             msg.data.append(0)
             msg.data.append(0)
         msg_list.append(msg)
-        
+
         # STATE_SET message
         """
         Byte 0: mode
@@ -216,7 +221,7 @@ class Vehicle:
         Byte 2: brake state
         Byte 3: special state, this demo does not use special state, so just leave it 0
         """
-        if self._current_mode != self._target_mode or self.brake_state != self.target_brake_state:
+        if self._current_mode != self._target_mode.value or self.brake_state != self.target_brake_state:
             msg = HEXCANMessage(self._can_id | HEXCANIDVehicleFunction.STATE_SET.value, b'', True, now)
             msg.data = bytearray()
             msg.data.append(self._target_mode.value)
@@ -224,6 +229,7 @@ class Vehicle:
             msg.data.append(self.target_brake_state)
             msg.data.append(0)
             msg_list.append(msg)
+            self.__data_interface.logi(f"Mode or brake state mismatch, Target mode: {self._target_mode}, Real mode: {self._current_mode}, Target brake: {self.target_brake_state}, Real brake: {self.brake_state}")
         return msg_list
 
     def run(self):
@@ -239,6 +245,7 @@ class Vehicle:
             # Then, receive other ros messages
             spd = self.__data_interface.get_target_speed()
             if spd is not None:
+                self._target_speed_got_time = time.time()
                 self._target_speed = spd
             # Then get brake state
             

@@ -11,6 +11,7 @@ import rospy
 from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from can_msgs.msg import Frame
+from geometry_msgs.msg import Twist
 
 from .interface_base import InterfaceBase
 from .hexcan import HEXCANMessage
@@ -38,7 +39,10 @@ class DataInterface(InterfaceBase):
         ### subscriber
         self.__can_sub = rospy.Subscriber('received_messages', Frame,
                                              self.__can_callback)
+        self.__cmd_vel_sub = rospy.Subscriber('cmd_vel', Twist, self.__cmd_vel_callback)
+
         self.__can_sub
+        self.__cmd_vel_sub
 
     def logd(self, msg, *args, **kwargs):
         rospy.logdebug(msg, *args, **kwargs)
@@ -82,6 +86,10 @@ class DataInterface(InterfaceBase):
     def __frame_to_hex_can_msg(self, frame: Frame):
         return HEXCANMessage(frame.id, frame.data, frame.is_extended, frame.header.stamp.to_sec())
 
-    def __can_callback(self, msg: Frame) -> HEXCANMessage:
+    def __can_callback(self, msg: Frame):
         self._hex_can_frame_queue.put(self.__frame_to_hex_can_msg(msg))
+
+    def __cmd_vel_callback(self, msg: Twist):
+        target_spd = [msg.linear.x, msg.linear.y, msg.angular.z]
+        self._target_spd_queue.put(target_spd)
 

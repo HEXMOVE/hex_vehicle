@@ -8,11 +8,11 @@
 > 
 >  It is provided as a reference for developers to understand how to use the HEXMOVE chassis with CAN, so you could write your own code based on this demo. 
 > 
-> - If you just want to drive the robot, please just use the ROS package provided by HEXMOVE.
+> - If you just want to use the robot, please just use the ROS package provided by HEXMOVE.
 > 
 > - If you do not plan to write your own code, please just use ROS package provided by HEXMOVE.
 > 
-> If you are really determined to use write your own code, please note that we do not provide any technical support for that.
+> If you are really determined to use write your own code, please note that we do not provide any technical support for that except this demo and the CAN bus document.
 
 ## Pre requisites
 
@@ -38,7 +38,6 @@ For users using other systems, you can choose to run ROS inside a Docker contain
 * [ ] **Horizon RDK X5**
 * [ ] **Rockchip RK3588**
 
-todo fill the info below
 ---
 
 ## Public APIs
@@ -149,6 +148,3 @@ Follow these steps to set up the project for development and testing on your loc
    ```shell
    ros2 launch hex_python_template python_template.launch.py
    ```
-
-2. Publish RGB and depth images to the `/in_str` and `/in_int` topics, respectively.
-3. View the output on the `/out_str` and `/out_int` topics.

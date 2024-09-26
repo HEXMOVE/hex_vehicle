@@ -18,6 +18,7 @@ class InterfaceBase(ABC):
 
         ### ROS RX msg queues
         self._hex_can_frame_queue = queue.Queue(100)
+        self._target_spd_queue = queue.Queue(100)
 
     def __del__(self):
         self.shutdown()
@@ -80,5 +81,7 @@ class InterfaceBase(ABC):
             return None
         
     def get_target_speed(self) -> typing.Optional[list]:
-        # todo. get target speed from ros
-        return None
+        try:
+            return self._target_spd_queue.get_nowait()
+        except queue.Empty:
+            return None
