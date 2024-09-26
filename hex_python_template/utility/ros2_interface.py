@@ -86,11 +86,7 @@ class DataInterface(InterfaceBase):
         self.__out_int_pub.publish(msg)
 
     def __in_str_callback(self, msg: String):
-        with self._in_str_lock:
-            self._in_str = msg.data
-            self._in_str_flag = True
+        self._in_str_queue.put(msg.data)
 
     def __in_int_callback(self, msg: Int32):
-        with self._in_int_lock:
-            self._in_int = msg.data
-            self._in_int_flag = True
+        self._in_int_queue.put(msg.data)

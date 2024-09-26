@@ -1,15 +1,28 @@
 # hex_vehicle
 
-**hex_vehicle** is the minial implementation to use socketcan and ROS to control HEXMOVE chassis. This demo is make as simple as possible, so you can modify to fit your needs, or remove the ROS part to use it as a standalone python script.
+**hex_vehicle** is the minial implementation to use socketcan and ROS to control HEXMOVE chassis. This demo is make as easy to read as possible and then as simple as possible, so you can modify to fit your needs, or remove the ROS part to use it as a standalone python script, or write code in other languages based on this demo.
+
+> WARNING: This is a demo project. It is not intended to be used in real world. The code here could be buggy. This code it is not optimized for performance at all. This code does not implenment all fuctions of our product.
+> 
+> DO NOT DIRECTLY USE THIS CODE IN YOUR PROJECTS.
+> 
+>  It is provided as a reference for developers to understand how to use the HEXMOVE chassis with CAN, so you could write your own code based on this demo. 
+> 
+> - If you just want to drive the robot, please just use the ROS package provided by HEXMOVE.
+> 
+> - If you do not plan to write your own code, please just use ROS package provided by HEXMOVE.
+> 
+> If you are really determined to use write your own code, please note that we do not provide any technical support for that.
 
 ## Pre requisites
 
 - A linux machine supporting socketcan
 - A socketcan interface, for example the can device we provide or physical can device, USB2CAN etc.
 - ROS1 or ROS2 installed. Refer to the [ROS Installation guide](http://wiki.ros.org/ROS/Installation)
-- The pip package `socketcan` [python-can](https://github.com/hardbyte/python-can)
-  > Ubuntu users can easily install by `apt install python3-can`
-
+- ROS socketcan package:
+   - For ROS1: [socketcan_bridge](https://wiki.ros.org/socketcan_bridge) `apt install ros-<distro>-socketcan-bridge`
+      > `sudo ip link set can0 type can bitrate 500000`, `sudo ip link set can0 up`, `rosrun socketcan_bridge socketcan_bridge_node`
+   - For ROS2: [ros2_socketcan](https://index.ros.org/p/ros2_socketcan/) `apt install ros-<distro>-ros2-socketcan`
 
 ## Supported Platforms and Systems
 
@@ -34,22 +47,49 @@ todo fill the info below
 
 | Topic      | Msg Type                | Description           |
 | ---------- | ----------------------- | --------------------- |
-| `/out_str` | `std_msgs/(msg/)String` | Example of a string publication. |
-| `/out_int` | `std_msgs/(msg/)Int32`  | Example of an int32 publication.  |
+| `/odom` | `nav_msgs/(msg/)Odometry` | The odom of the robot |
+| `/hex_topic/vehicle_state` | `std_msgs/(msg/)String`  | The state of robot in JSON form. |
+
+> In the demo, we only published part of the state of the robot. You can always refer to the datasheet to get more information. 
+> 
+> Or, just use the ROS package provided by us.
+
+What's in the JSON message:
+
+- (string) device_type        
+   > name of vehicle
+- (bool) brake_state
+   > 0=off 1=on
+- (int) work_mode
+   > 0=standby 1=remote 2=CAN 3=free
+- (float) battery_vol
+   > (V) voltage of battery
+- (string) err_state
+   > Err info. Only shows one of the errors. You can improve this code to show more errors by refering to the datasheet, or use the ROS package provided by us to get more error info.
+
+
 
 ### Subscribed Topics
 
 | Topic     | Msg Type                | Description           |
 | --------- | ----------------------- | --------------------- |
-| `/in_str` | `std_msgs/(msg/)String` | Example of a string subscription. |
-| `/in_int` | `std_msgs/(msg/)Int32`  | Example of an int32 subscription.  |
+| `/cmd_vel` | `geometry_msgs/(msg/)Twist` | Target speed for the robot |
+| `/hex_topic/vehicle_control` | `std_msgs/(msg/)String`  | Controls vehicle in a json form. |
+
+What can be put into the json message:
+
+- (bool) brake_state
+   > 0=off 1=on
+- (int) target_work_mode
+   > 0=standby 1=remote 2=CAN 3=free
+- (bool) clear_err
+   > 0=off 1=on, clears error status
 
 ### Parameters
 
 | Name        | Data Type     | Description                  |
 | ----------- | ------------- | ---------------------------- |
-| `str_name`  | `string`      | Prefix for the output string. |
-| `int_range` | `vector<int>` | Range for the output int.     |
+| `odom_from_speed`  | `bool` | Calculates odom from speed instead of encorder values. |
 
 ## Getting Started
 

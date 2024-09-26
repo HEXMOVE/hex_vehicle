@@ -9,10 +9,11 @@
 import rospy
 
 from std_msgs.msg import String
-from std_msgs.msg import Int32
+from nav_msgs.msg import Odometry
+from can_msgs.msg import Frame
 
 from .interface_base import InterfaceBase
-
+from .hexcan import HEXCANMessage
 
 class DataInterface(InterfaceBase):
 
@@ -32,16 +33,30 @@ class DataInterface(InterfaceBase):
         }
 
         ### publisher
-        self.__out_str_pub = rospy.Publisher('out_str', String, queue_size=10)
-        self.__out_int_pub = rospy.Publisher('out_int', Int32, queue_size=10)
 
         ### subscriber
-        self.__in_str_sub = rospy.Subscriber('in_str', String,
-                                             self.__in_str_callback)
-        self.__in_int_sub = rospy.Subscriber('in_int', Int32,
-                                             self.__in_int_callback)
-        self.__in_str_sub
-        self.__in_int_sub
+        self.__can_sub = rospy.Subscriber('received_messages', Frame,
+                                             self.__can_callback)
+        self.__can_sub
+
+    def logd(self, msg, *args, **kwargs):
+        rospy.logdebug(msg, *args, **kwargs)
+
+    def logi(self, msg, *args, **kwargs):
+        rospy.loginfo(msg, *args, **kwargs)
+
+    def logw(self, msg, *args, **kwargs):
+        rospy.logwarn(msg, *args, **kwargs)
+    
+    def loge(self, msg, *args, **kwargs):
+        rospy.logerr(msg, *args, **kwargs)
+
+    def logf(self, msg, *args, **kwargs):
+        rospy.logfatal(msg, *args, **kwargs)
+    
+    def send_can_frame(self, can_frame: HEXCANMessage):
+        # todo
+        pass
 
     def ok(self):
         return not rospy.is_shutdown()
@@ -53,21 +68,14 @@ class DataInterface(InterfaceBase):
         pass
 
     def pub_out_str(self, out: str):
-        msg = String()
-        msg.data = out
-        self.__out_str_pub.publish(msg)
+        pass
 
     def pub_out_int(self, out: int):
-        msg = Int32()
-        msg.data = out
-        self.__out_int_pub.publish(msg)
+        pass
 
-    def __in_str_callback(self, msg: String):
-        with self._in_str_lock:
-            self._in_str = msg.data
-            self._in_str_flag = True
+    def __frame_to_hex_can_msg(self, frame: Frame):
+        return HEXCANMessage(frame.id, frame.data, frame.is_extended, frame.header.stamp.to_sec())
 
-    def __in_int_callback(self, msg: Int32):
-        with self._in_int_lock:
-            self._in_int = msg.data
-            self._in_int_flag = True
+    def __can_callback(self, msg: Frame) -> HEXCANMessage:
+        self._hex_can_frame_queue.put(self.__frame_to_hex_can_msg(msg))
+

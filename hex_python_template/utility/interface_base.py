@@ -6,26 +6,18 @@
 # Date  : 2024-09-05
 ################################################################
 
-import threading
+import queue
+import typing
 from abc import ABC, abstractmethod
-
-
+from .hexcan import HEXCANMessage
 class InterfaceBase(ABC):
-
     def __init__(self):
-        ### parameters
+        ### ROS parameters
         self._str_param = {}
         self._int_param = {}
 
-        ### subscribers
-        self._in_str_flag = False
-        self._in_int_flag = False
-        self._in_str = None
-        self._in_int = None
-
-        ### locks
-        self._in_str_lock = threading.Lock()
-        self._in_int_lock = threading.Lock()
+        ### ROS RX msg queues
+        self._hex_can_frame_queue = queue.Queue(100)
 
     def __del__(self):
         self.shutdown()
@@ -50,41 +42,43 @@ class InterfaceBase(ABC):
 
     def get_int_param(self) -> dict:
         return self._int_param
+    
+    @abstractmethod
+    def logd(self, msg, *args, **kwargs):
+        raise NotImplementedError("logd")
+    
+    @abstractmethod
+    def logi(self, msg, *args, **kwargs):
+        raise NotImplementedError("logi")
+    
+    @abstractmethod
+    def logw(self, msg, *args, **kwargs):
+        raise NotImplementedError("logw")
+    
+    @abstractmethod
+    def loge(self, msg, *args, **kwargs):
+        raise NotImplementedError("loge")
+    
+    @abstractmethod
+    def logf(self, msg, *args, **kwargs):
+        raise NotImplementedError("logf")
 
     ####################
     ### publishers
     ####################
     @abstractmethod
-    def pub_out_str(self, out: str):
-        raise NotImplementedError("InterfaceBase.pub_out_str")
-
-    @abstractmethod
-    def pub_out_int(self, out: int):
-        raise NotImplementedError("InterfaceBase.pub_out_int")
+    def send_can_frame(self, can_frame: HEXCANMessage):
+        raise NotImplementedError("InterfaceBase.send_can_frame")
 
     ####################
     ### subscribers
     ####################
-    # in str
-    def has_in_str(self) -> bool:
-        return self._in_str_flag
-
-    def clear_in_str(self):
-        with self._in_str_lock:
-            self._in_str_flag = False
-
-    def get_in_str(self) -> str:
-        with self._in_str_lock:
-            return self._in_str
-
-    # in int
-    def has_in_int(self) -> bool:
-        return self._in_int_flag
-
-    def clear_in_int(self):
-        with self._in_int_lock:
-            self._in_int_flag = False
-
-    def get_in_int(self) -> int:
-        with self._in_int_lock:
-            return self._in_int
+    def get_can_frame(self) -> typing.Optional[HEXCANMessage]:
+        try:
+            return self._hex_can_frame_queue.get_nowait()
+        except queue.Empty:
+            return None
+        
+    def get_target_speed(self) -> typing.Optional[list]:
+        # todo. get target speed from ros
+        return None
