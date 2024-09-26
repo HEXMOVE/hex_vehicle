@@ -63,7 +63,7 @@ VEHICLE_INFO = {
         "wheel_spacing_width": 0.508,
         "wheel_spacing_length": 0.412,
     },
-    0x09: {
+    0xE4: {
         "name": "ORCS-MINI",
         "model": VehicleModel.MECANUM,
         "wheel_spacing_width": 0.326,

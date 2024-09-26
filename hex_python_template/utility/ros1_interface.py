@@ -33,6 +33,7 @@ class DataInterface(InterfaceBase):
         }
 
         ### publisher
+        self.__can_pub = rospy.Publisher('sent_messages', Frame, queue_size=10, tcp_nodelay=True)
 
         ### subscriber
         self.__can_sub = rospy.Subscriber('received_messages', Frame,
@@ -55,8 +56,13 @@ class DataInterface(InterfaceBase):
         rospy.logfatal(msg, *args, **kwargs)
     
     def send_can_frame(self, can_frame: HEXCANMessage):
-        # todo
-        pass
+        # Transform HEXCANMessage to Frame
+        f = Frame()
+        f.id = can_frame.can_id
+        f.data = can_frame.data
+        f.is_extended = can_frame.extended
+        f.dlc = len(can_frame.data)
+        self.__can_pub.publish(f)
 
     def ok(self):
         return not rospy.is_shutdown()
