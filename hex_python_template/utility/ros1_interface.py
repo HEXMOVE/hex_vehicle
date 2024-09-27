@@ -84,7 +84,7 @@ class DataInterface(InterfaceBase):
         pass
 
     def __frame_to_hex_can_msg(self, frame: Frame):
-        return HEXCANMessage(frame.id, frame.data, frame.is_extended, frame.header.stamp.to_sec())
+        return HEXCANMessage(frame.id, frame.data[:frame.dlc], frame.is_extended, frame.header.stamp.to_sec())
 
     def __can_callback(self, msg: Frame):
         self._hex_can_frame_queue.put(self.__frame_to_hex_can_msg(msg))

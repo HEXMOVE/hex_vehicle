@@ -1,24 +1,17 @@
 from enum import Enum
 
-
-class HEXCANIDVehicleFunction(Enum):
-    """
-    This is a list of functions that are used by all vehicles(id class = HEXCANIDClass.CHASSIS).
-    """
-    STATE_SET = 0x11
-    STATE_REPORT = 0xB1
-    SPEED_SET = 0x12
-    SPEED_REPORT = 0xB2
-    MAIN_ODOM_REPORT = 0xB3
-    SECONDARY_ODOM_REPORT = 0xB4
-    ERROR_REPORT = 0xB5
-
 class VehicleModel(Enum):
     DIFFERENTIAL = 0
     MECANUM = 1
     ARKERMAN = 2
     DELTA_OMNI = 3
     QUAD_OMNI = 4
+
+class VehicleMode(Enum):
+    STANDBY = 0 # Recrive no order with motors locked
+    REMOTER = 1 # Use remoter for control
+    CAN = 2     # Use CAN bus for control
+    FREE = 3    # Recrive no order with motors unlocked
 
 VEHICLE_INFO = {
     0x01: {
@@ -124,9 +117,3 @@ VEHICLE_INFO = {
         "wheel_spacing_length": 0,
     },
 }
-
-class VehicleMode(Enum):
-    STANDBY = 0 # Recrive no order with motors locked
-    REMOTER = 1 # Use remoter for control
-    CAN = 2     # Use CAN bus for control
-    FREE = 3    # Recrive no order with motors unlocked

@@ -16,9 +16,10 @@ sys.path.append(scrpit_path)
 
 from utility import DataInterface
 from utility.hexcan import HEXCANMessage
-from utility.hexcan import HEXCANIDClass, HEXCANIDStdFunction
-from vehicle_const import HEXCANIDVehicleFunction, VehicleModel, VEHICLE_INFO, VehicleMode
-
+from utility.hexcan import HEXCANIDClass, HEXCANIDFunctionStd, StdFunctionGeneralSetting
+from vehicle_can_msgs import HEXCANIDFunctionVehicle, VehicleFunctionStateSet, VehicleFunctionStateReport, \
+    VehicleFunctionSpeedSet, VehicleFunctionSpeedReport, VehicleFunctionMainOdomReport, VehicleFunctionSecondaryOdomReport
+from vehicle_consts import VehicleModel, VehicleMode, VEHICLE_INFO
 
 
 class Vehicle:
@@ -62,25 +63,21 @@ class Vehicle:
         return VEHICLE_INFO[idc]
 
     def handle_state_report(self, can_msg: HEXCANMessage):
-        self.work_state = can_msg.data[0]
-        self._current_mode = can_msg.data[1]
-        # As the docs shows, byte2 and 3 together into a uint16, which is the battery voltage. Unit is 0.1V
-        self.battery_vol = int.from_bytes(can_msg.data[2:3], byteorder='little', signed=False) / 10.0
-        self.brake_state = can_msg.data[6]
+        state = VehicleFunctionStateReport.from_bytes(can_msg.data)
+        self.work_state = state.state
+        self._current_mode = state.mode
+        self.battery_vol = state.voltage / 10.0
+        self.brake_state = state.brake
 
     def handle_speed_report(self, can_msg: HEXCANMessage):
-        """
-        Byte 0-1: x speed in mm/s, int16
-        Byte 2-3: y speed in mm/s, int16
-        Byte 4-5: z speed in mrad/s, int16
-        Byte 6-7: Arkerman steering angle in mrad, int16
-        """
-        self._read_speed[0] = int.from_bytes(can_msg.data[0:1], byteorder='little', signed=True) / 1000.0
-        self._read_speed[1] = int.from_bytes(can_msg.data[2:3], byteorder='little', signed=True) / 1000.0
+        spd = VehicleFunctionSpeedReport.from_bytes(can_msg.data)
+
+        self._read_speed[0] = spd.x / 1000.0
+        self._read_speed[1] = spd.y / 1000.0
         if self.get_vehicle_info()["model"] == VehicleModel.ARKERMAN:
-            self._read_speed[2] = int.from_bytes(can_msg.data[6:7], byteorder='little', signed=True) / 1000.0
+            self._read_speed[2] = spd.a / 1000.0
         else:
-            self._read_speed[2] = int.from_bytes(can_msg.data[4:5], byteorder='little', signed=True) / 1000.0
+            self._read_speed[2] = spd.w / 1000.0
 
     def handle_main_odom_report(self, can_msg: HEXCANMessage):
         # todo
@@ -112,7 +109,7 @@ class Vehicle:
             # self.__data_interface.logi("Got idc 0x{:02X} idt 0x{:02X} idn 0x{:02X} idf 0x{:02X}".format(
             #     can_msg.get_id_class(), can_msg.get_id_type(), can_msg.get_id_num(), can_msg.get_id_function()))
             # Wait for first B0 message to set as our target device:
-            if can_msg.get_id_class() == HEXCANIDClass.CHASSIS.value and can_msg.get_id_function() == HEXCANIDStdFunction.HEARTBEAT.value:
+            if can_msg.get_id_class() == HEXCANIDClass.CHASSIS.value and can_msg.get_id_function() == HEXCANIDFunctionStd.HEARTBEAT.value:
                 # Make sure the device is in our list
                 if can_msg.get_id_type() not in VEHICLE_INFO:
                     self.__data_interface.logw(f"Unknown device: {can_msg.can_id}")
@@ -128,17 +125,17 @@ class Vehicle:
             return
 
         id_function = can_msg.get_id_function()
-        if id_function == HEXCANIDVehicleFunction.STATE_REPORT.value:
+        if id_function == HEXCANIDFunctionVehicle.STATE_REPORT.value:
             self.handle_state_report(can_msg)
-        elif id_function == HEXCANIDVehicleFunction.SPEED_REPORT.value:
+        elif id_function == HEXCANIDFunctionVehicle.SPEED_REPORT.value:
             self.handle_speed_report(can_msg)
-        elif id_function == HEXCANIDVehicleFunction.MAIN_ODOM_REPORT.value:
+        elif id_function == HEXCANIDFunctionVehicle.MAIN_ODOM_REPORT.value:
             self.handle_main_odom_report(can_msg)
-        elif id_function == HEXCANIDVehicleFunction.SECONDARY_ODOM_REPORT.value:
+        elif id_function == HEXCANIDFunctionVehicle.SECONDARY_ODOM_REPORT.value:
             self.handle_secondary_odom_report(can_msg)
-        elif id_function == HEXCANIDVehicleFunction.ERROR_REPORT.value:
+        elif id_function == HEXCANIDFunctionVehicle.ERROR_REPORT.value:
             self.handle_error_report(can_msg)
-        elif id_function == HEXCANIDStdFunction.HEARTBEAT.value:
+        elif id_function == HEXCANIDFunctionStd.HEARTBEAT.value:
             self.last_heartbeat_time = can_msg.time
             self._current_enabled = bool(can_msg.data[0])
         else:
@@ -165,70 +162,25 @@ class Vehicle:
             self.target_brake_state = 1
         
         # Gen can message. Always send SPEED_SET message, and if mode or brake state does not match, 
-        # send STATE_SET message also
         msg_list = []
         if self._current_enabled != True:
-            msg = HEXCANMessage(self._can_id | HEXCANIDStdFunction.GENERAL_SETTING.value, b'', True, now)
-            """
-            Byte 0: same as id class
-            Byte 1: same as id type
-            Byte 2: same as id num
-            Byte 3: 1 to enable, 0 to disable
-            """
-            msg.data = bytearray()
-            msg.data.append((self._can_id >> 24) & 0xFF)
-            msg.data.append((self._can_id >> 16) & 0xFF)
-            msg.data.append((self._can_id >> 8) & 0xFF)
-            msg.data.append(1)
-            msg_list.append(msg)
+            msg_list.append(StdFunctionGeneralSetting(self._can_id >> 24, (self._can_id >> 16) & 0xFF, (self._can_id >> 8) & 0xFF, True).to_hexcan_message(self._can_id))
             self.__data_interface.logi("Trying to enable the chassis")
             return msg_list
         
-        
         # SPEED_SET message
-        msg = HEXCANMessage(self._can_id | HEXCANIDVehicleFunction.SPEED_SET.value, b'', True, now)
+        msg = HEXCANMessage(self._can_id | HEXCANIDFunctionVehicle.SPEED_SET.value, b'', True, now)
         # If _target_speed_got_time is None or too old, we should stop the vehicle
         if self._target_speed_got_time is None or now - self._target_speed_got_time > self._cmd_vel_timeout:
-            self._target_speed = [0, 0, 0]
-        msg.data = bytearray()
-        """
-        Byte 0-1: x speed in mm/s, int16
-        Byte 2-3: y speed in mm/s, int16
-        Byte 4-5: z speed in mrad/s, int16. Arkerman should leave this 0
-        Byte 6-7: Arkerman steering angle in mrad, int16. Non-arkerman should leave this 0
-        """
-        msg.data.append(int(self._target_speed[0] * 1000) & 0xFF)
-        msg.data.append((int(self._target_speed[0] * 1000) >> 8) & 0xFF)
-        msg.data.append(int(self._target_speed[1] * 1000) & 0xFF)
-        msg.data.append((int(self._target_speed[1] * 1000) >> 8) & 0xFF)
-        
+            self._target_speed = [0, 0, 0]        
         if self.get_vehicle_info()["model"] == VehicleModel.ARKERMAN:
-            msg.data.append(0)
-            msg.data.append(0)
-            msg.data.append(int(self._target_speed[2] * 1000) & 0xFF)
-            msg.data.append((int(self._target_speed[2] * 1000) >> 8) & 0xFF)
+            msg_list.append(VehicleFunctionSpeedSet(x=self._target_speed[0], y=self._target_speed[1], w=0, a=self._target_speed[2]).to_hexcan_message(self._can_id))
         else:
-            msg.data.append(int(self._target_speed[2] * 1000) & 0xFF)
-            msg.data.append((int(self._target_speed[2] * 1000) >> 8) & 0xFF)
-            msg.data.append(0)
-            msg.data.append(0)
-        msg_list.append(msg)
+            msg_list.append(VehicleFunctionSpeedSet(x=self._target_speed[0], y=self._target_speed[1], w=self._target_speed[2], a=0).to_hexcan_message(self._can_id))
 
         # STATE_SET message
-        """
-        Byte 0: mode
-        Byte 1: beep state, this demo does not use beep, so just leave it 0
-        Byte 2: brake state
-        Byte 3: special state, this demo does not use special state, so just leave it 0
-        """
         if self._current_mode != self._target_mode.value or self.brake_state != self.target_brake_state:
-            msg = HEXCANMessage(self._can_id | HEXCANIDVehicleFunction.STATE_SET.value, b'', True, now)
-            msg.data = bytearray()
-            msg.data.append(self._target_mode.value)
-            msg.data.append(0)
-            msg.data.append(self.target_brake_state)
-            msg.data.append(0)
-            msg_list.append(msg)
+            msg_list.append(VehicleFunctionStateSet(mode=self._target_mode, beep=0, brake=self.target_brake_state, special=0).to_hexcan_message(self._can_id))
             self.__data_interface.logi(f"Mode or brake state mismatch, Target mode: {self._target_mode}, Real mode: {self._current_mode}, Target brake: {self.target_brake_state}, Real brake: {self.brake_state}")
         return msg_list
 

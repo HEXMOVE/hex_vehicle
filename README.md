@@ -22,7 +22,8 @@
 - ROS socketcan package:
    - For ROS1: [socketcan_bridge](https://wiki.ros.org/socketcan_bridge) `apt install ros-<distro>-socketcan-bridge`
       > `sudo ip link set can0 type can bitrate 500000`, `sudo ip link set can0 up`, `rosrun socketcan_bridge socketcan_bridge_node`
-   - For ROS2: [ros2_socketcan](https://index.ros.org/p/ros2_socketcan/) `apt install ros-<distro>-ros2-socketcan`
+   - For ROS2: Get [ros2-socketcan](https://github.com/autowarefoundation/ros2_socketcan/releases/tag/1.3.0) from GITHUB(v1.3.0). DO NOT INSTALL FROM APT. Foxy and humble have breaking changes. 
+      > `sudo ip link set can0 type can bitrate 500000`, `sudo ip link set can0 up`, `ros2 run ros2_socketcan socketcan_bridge_node`
 
 ## Supported Platforms and Systems
 

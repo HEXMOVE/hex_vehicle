@@ -12,9 +12,11 @@ import threading
 
 from std_msgs.msg import String
 from std_msgs.msg import Int32
+from can_msgs.msg import Frame
 
 from .interface_base import InterfaceBase
-
+from .hexcan import HEXCANMessage
+from geometry_msgs.msg import Twist
 
 class DataInterface(InterfaceBase):
 
@@ -45,21 +47,42 @@ class DataInterface(InterfaceBase):
         }
 
         ### publisher
-        self.__out_str_pub = self.__node.create_publisher(
-            String, 'out_str', 10)
-        self.__out_int_pub = self.__node.create_publisher(Int32, 'out_int', 10)
+        self.__can_pub = self.__node.create_publisher(Frame, 'sent_messages', 10)
 
         ### subscriber
-        self.__in_str_sub = self.__node.create_subscription(
-            String, 'in_str', self.__in_str_callback, 10)
-        self.__in_int_sub = self.__node.create_subscription(
-            Int32, 'in_int', self.__in_int_callback, 10)
-        self.__in_str_sub
-        self.__in_int_sub
+        self.__can_sub = self.__node.create_subscription(Frame, 'received_messages',
+                                             self.__can_callback, 10)
+        self.__cmd_vel_sub = self.__node.create_subscription(Twist, 'cmd_vel', self.__cmd_vel_callback, 10)
+        self.__can_sub
+        self.__cmd_vel_sub
 
         ### spin thread
         self.__spin_thread = threading.Thread(target=self.__spin)
         self.__spin_thread.start()
+
+    
+    def logd(self, msg, *args, **kwargs):
+        self. __logger.debug(msg, *args, **kwargs)
+
+    def logi(self, msg, *args, **kwargs):
+        self.__logger.info(msg, *args, **kwargs)
+
+    def logw(self, msg, *args, **kwargs):
+        self.__logger.warning(msg, *args, **kwargs)
+    
+    def loge(self, msg, *args, **kwargs):
+        self.__logger.error(msg, *args, **kwargs)
+
+    def logf(self, msg, *args, **kwargs):
+        self.__logger.fatal(msg, *args, **kwargs)
+
+    def send_can_frame(self, can_frame: HEXCANMessage):
+        f = Frame()
+        f.id = can_frame.can_id
+        f.data = can_frame.data
+        f.is_extended = can_frame.extended
+        f.dlc = len(can_frame.data)
+        self.__can_pub.publish(f)
 
     def ok(self):
         return rclpy.ok()
@@ -85,8 +108,12 @@ class DataInterface(InterfaceBase):
         msg.data = out
         self.__out_int_pub.publish(msg)
 
-    def __in_str_callback(self, msg: String):
-        self._in_str_queue.put(msg.data)
+    def __frame_to_hex_can_msg(self, frame: Frame) -> HEXCANMessage:
+        return HEXCANMessage(frame.id, frame.data[:frame.dlc], frame.is_extended, frame.header.stamp.to_sec())
 
-    def __in_int_callback(self, msg: Int32):
-        self._in_int_queue.put(msg.data)
+    def __can_callback(self, msg: Frame):
+        self._hex_can_frame_queue.put(self.__frame_to_hex_can_msg(msg))
+
+    def __cmd_vel_callback(self, msg: Twist):
+        target_spd = [msg.linear.x, msg.linear.y, msg.angular.z]
+        self._target_spd_queue.put(target_spd)
