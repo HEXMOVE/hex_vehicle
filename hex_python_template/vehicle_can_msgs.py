@@ -81,7 +81,7 @@ class VehicleFunctionStateReport:
     
     @staticmethod
     def from_bytes(data: bytes) -> 'VehicleFunctionStateReport':
-        return VehicleFunctionStateReport(bool(data[0]), VehicleMode(data[1]), *data[2:])
+        return VehicleFunctionStateReport(bool(data[0]), VehicleMode(data[1]), *struct.unpack("<HBBBB", data[2:]))
     
 @dataclass
 class VehicleFunctionSpeedSet:
@@ -116,7 +116,10 @@ class VehicleFunctionSpeedReport:
     Byte 0-1: int16, x linear speed in mm/s
     Byte 2-3: int16, y linear speed in mm/s
     Byte 4-5: int16, angular speed in mrad/s. Arkerman will also report this as just a reference
-    Byte 6-7: int16, Arkerman steering angle in mrad, int16. 
+    Byte 6-7: int16, Arkerman steering angle in mrad, int16. (Some device might not have this)
+
+    Note that this message allows constrcuting from bytes less than 8 bytes, since some chassis do not report all values.
+    As long as the data is at least 6 bytes long it is then considered valid.
     """
     x: int = 0
     y: int = 0
@@ -133,6 +136,10 @@ class VehicleFunctionSpeedReport:
     
     @staticmethod
     def from_bytes(data: bytes) -> 'VehicleFunctionSpeedReport':
+        if len(data) < 6:
+            raise ValueError("VehicleFunctionSpeedReport Data length is less than 6 bytes")
+        if len(data) < 8:
+            data = data.ljust(8, b'\x00')
         return VehicleFunctionSpeedReport(*struct.unpack("<hhhh", data))
 
 @dataclass

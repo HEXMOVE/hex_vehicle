@@ -169,17 +169,17 @@ class Vehicle:
             return msg_list
         
         # SPEED_SET message
-        msg = HEXCANMessage(self._can_id | HEXCANIDFunctionVehicle.SPEED_SET.value, b'', True, now)
         # If _target_speed_got_time is None or too old, we should stop the vehicle
         if self._target_speed_got_time is None or now - self._target_speed_got_time > self._cmd_vel_timeout:
             self._target_speed = [0, 0, 0]        
+        # target speed is in m/s, we should convert it to mm/s
         if self.get_vehicle_info()["model"] == VehicleModel.ARKERMAN:
-            msg_list.append(VehicleFunctionSpeedSet(x=self._target_speed[0], y=self._target_speed[1], w=0, a=self._target_speed[2]).to_hexcan_message(self._can_id))
+            msg_list.append(VehicleFunctionSpeedSet(x=int(self._target_speed[0]*1000), y=int(self._target_speed[1]*1000), w=0, a=int(self._target_speed[2]*1000)).to_hexcan_message(self._can_id))
         else:
-            msg_list.append(VehicleFunctionSpeedSet(x=self._target_speed[0], y=self._target_speed[1], w=self._target_speed[2], a=0).to_hexcan_message(self._can_id))
+            msg_list.append(VehicleFunctionSpeedSet(x=int(self._target_speed[0]*1000), y=int(self._target_speed[1]*1000), w=int(self._target_speed[2]*1000), a=0).to_hexcan_message(self._can_id))
 
         # STATE_SET message
-        if self._current_mode != self._target_mode.value or self.brake_state != self.target_brake_state:
+        if self._current_mode != self._target_mode or self.brake_state != self.target_brake_state:
             msg_list.append(VehicleFunctionStateSet(mode=self._target_mode, beep=0, brake=self.target_brake_state, special=0).to_hexcan_message(self._can_id))
             self.__data_interface.logi(f"Mode or brake state mismatch, Target mode: {self._target_mode}, Real mode: {self._current_mode}, Target brake: {self.target_brake_state}, Real brake: {self.brake_state}")
         return msg_list
